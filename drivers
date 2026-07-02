@@ -1,0 +1,71 @@
+"""
+fsw_driver.py
+
+Generic SCPI/VISA wrapper for the R&S FSW spectrum analyzer, plus
+config-driven basic setup / screenshot / basic-measurement helpers.
+Real measurement requirements will be added later per the user - this
+only covers basic setup, screenshot capture, and a placeholder read.
+"""
+
+import time
+import pyvisa
+
+from utils.command_loader import format_step_command
+
+
+class Fsw:
+    def __init__(self, visa_address: str, timeout_ms: int = 10000):
+        self.visa_address = visa_address
+        self.rm = pyvisa.ResourceManager()
+        self.inst = self.rm.open_resource(visa_address)
+        self.inst.timeout = timeout_ms
+
+    def write(self, cmd: str):
+        self.inst.write(cmd)
+
+    def query(self, cmd: str) -> str:
+        return self.inst.query(cmd).strip()
+
+    def idn(self) -> str:
+        return self.query("*IDN?")
+
+    def run_steps(self, steps: list, params: dict) -> dict:
+        """Execute a list of {"cmd", "wait_ms", "query"?} steps."""
+        responses = {}
+        for step in steps:
+            cmd = format_step_command(step, params)
+            if step.get("query"):
+                responses[cmd] = self.query(cmd)
+            else:
+                self.write(cmd)
+            wait_ms = step.get("wait_ms", 0)
+            if wait_ms:
+                time.sleep(wait_ms / 1000.0)
+        return responses
+
+    def save_screenshot(self, screenshot_steps_cfg: dict, remote_path: str, local_path: str):
+        """
+        Trigger a screenshot on the instrument (saved to remote_path on the
+        FSW), then pull the file back to local_path over VISA binary transfer.
+
+        NOTE: exact hardcopy SCPI can vary by firmware - verify against your
+        FSW's manual; this uses the standard HCOP:/MMEM: command family.
+        """
+        params = {"remote_path": remote_path}
+        for step in screenshot_steps_cfg["steps"]:
+            cmd = format_step_command(step, params)
+            self.write(cmd)
+            wait_ms = step.get("wait_ms", 0)
+            if wait_ms:
+                time.sleep(wait_ms / 1000.0)
+
+        # Pull the saved PNG back from the instrument.
+        data = self.inst.query_binary_values(
+            f"MMEM:DATA? '{remote_path}'", datatype="B", container=bytearray
+        )
+        with open(local_path, "wb") as f:
+            f.write(data)
+        return local_path
+
+    def close(self):
+        self.inst.close()
