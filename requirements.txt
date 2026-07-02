@@ -1,0 +1,5 @@
+python>=3.8
+pyvisa
+pyserial
+numpy
+pytest
