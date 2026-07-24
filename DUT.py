@@ -8,26 +8,15 @@ class DUTController:
 
     PROMPT = r":-\)"
     min_percent = 30
-    def __init__(self):
-        self.session = None
 
-    def __init__(self, nkdp):
-        """
-        nkdp = pexpect.spawn object
-        """
-        self.nkdp = nkdp
-
-    def __init__(self,
-             nanokdp_cmd="nanokdp",
-             timeout=120):
-        self.timeout = timeout
-        self.nkdp = pexpect.spawn(
-            nanokdp_cmd,
-            encoding="utf-8",
-            timeout=timeout
-        )
-        self.nkdp.logfile_read = None
-        print("NanoKDP Started")
+    def __init__(self, nanokdp_cmd="nanokdp", timeout=120, nkdp=None):
+        self.timeout=timeout
+        if nkdp is not None:
+            self.nkdp=nkdp
+        else:
+            self.nkdp=pexpect.spawn(nanokdp_cmd,encoding="utf-8",timeout=timeout)
+            self.nkdp.logfile_read=None
+            print("NanoKDP Started")
 
     ####################################################################
     # DUT CONNECT

@@ -23,7 +23,7 @@ class FSW:
 
         self.rm = pyvisa.ResourceManager()
 
-        self.inst = self.rm.open_resource('TCPIP0::192.168.0.3::inst0::INSTR')
+        self.inst = self.rm.open_resource(self.resource)
 
         self.inst.timeout = self.timeout
 
